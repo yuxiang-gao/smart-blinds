@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-class blinds
+class Blinds
 {
 private:
   static const int step_time = 70;
@@ -13,10 +13,10 @@ private:
 
 public:
   int state;
-  blinds();
-  blinds(String name, int servo_pin);
-  ~blinds();
-  void move_to(int desired_state);
+  Blinds();
+  Blinds(String name, int servo_pin);
+  ~Blinds();
+  void moveTo(int desired_state);
   void calibrate(int percentage);
 };
 #endif

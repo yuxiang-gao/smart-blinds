@@ -1,9 +1,9 @@
 #include "Arduino.h"
 #include "blinds.h"
 
-blinds::blinds() {}
+Blinds::Blinds() {}
 
-blinds::blinds(String name, int servo_pin)
+Blinds::Blinds(String name, int servo_pin)
 {
   this->name = name;
   this->servo.attach(servo_pin);
@@ -13,18 +13,18 @@ blinds::blinds(String name, int servo_pin)
   this->state = 0;
 }
 
-blinds::~blinds()
+Blinds::~Blinds()
 {
   this->servo.detach();
 }
 
-void blinds::calibrate(int percentage)
+void Blinds::calibrate(int percentage)
 {
   Serial.printf("[blindS] Calibrate to %d%%\n", percentage);
   this->state = percentage;
 }
 
-void blinds::move_to(int percentage)
+void Blinds::moveTo(int percentage)
 {
   percentage = constrain(percentage, 0, 100);
   Serial.printf("[blindS] %s moving from %d%% to %d%%\n", this->name.c_str(), this->state, percentage);
