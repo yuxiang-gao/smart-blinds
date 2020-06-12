@@ -1,0 +1,5 @@
+.pio
+.python-version
+.DS_Store
+src/.vscode/
+.vscode/
