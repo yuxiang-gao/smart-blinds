@@ -5,22 +5,64 @@
 #include <DNSServer.h>
 #include <WiFiManager.h>
 
-#include <Espalexa.h>
+#include <PubSubClient.h>
 
 #include "blinds.h"
 
 static const int SERVO_PIN = 14; //D5 GPIO14
 static const char *DEVICE_NAME = "blinds 1";
+static const char *CMD_TOPIC = "bedroom/blinds/1";
+static const char *STATE_TOPIC = "bedroom/blinds/1/state";
 
 Blinds *blinds;
 
-Espalexa espalexa;
-EspalexaDevice *blinds_device;
+// MQTT client
+WiFiClient espClient;
+PubSubClient client(espClient);
+const char *mqtt_server = "192.168.0.11";
 
-bool first_on = true;
+// void blindCallback(EspalexaDevice *dev);
+// void calibrateCallback(EspalexaDevice *dev);
+void callback(char *topic, byte *payload, unsigned int length);
+void pubMsg(const char *topic, int value)
+{
+  char buf[4];
+  itoa(value, buf, 10);
+  client.publish(topic, buf);
+}
 
-void blindCallback(EspalexaDevice *dev);
-void calibrateCallback(EspalexaDevice *dev);
+int decodeMsg(byte *payload, unsigned int length)
+{
+  payload[length] = '\0';
+  String str = String((char *)payload);
+  return str.toInt();
+}
+
+void reconnect()
+{
+  // Loop until we're reconnected
+  while (!client.connected())
+  {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("arduinoClient"))
+    {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      pubMsg(STATE_TOPIC, blinds->getState());
+      // ... and resubscribe
+      client.subscribe(CMD_TOPIC);
+    }
+    else
+    {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
 
 void setup()
 {
@@ -35,42 +77,31 @@ void setup()
   // Connected!
   Serial.printf("[WIFI] Connected. SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 
-  blinds_device = new EspalexaDevice(DEVICE_NAME, blindCallback, EspalexaDeviceType::dimmable);
-  espalexa.addDevice(blinds_device);
-  blinds_device->setState(true);
-  blinds_device->setPercent(0);
-  espalexa.addDevice("calibrate", calibrateCallback, EspalexaDeviceType::dimmable);
-  espalexa.begin();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+
+  delay(1500);
 }
 
 void loop()
 {
-  espalexa.loop();
-  delay(1);
-}
-
-void blindCallback(EspalexaDevice *dev)
-{
-  if (dev == nullptr)
-    return;
-  int desired_percentage = dev->getPercent();
-  if (first_on && (uint8_t)dev->getLastChangedProperty() == 1) // The first time to switch on in the alexa app, a value of 100 will be passed.
+  if (!client.connected())
   {
-    Serial.println("Switch on.");
-    first_on = false;
-    return;
+    reconnect();
   }
-  first_on = false;
-  Serial.printf("[MAIN] Device: %s, state: %d, value: %d%%\n", dev->getName().c_str(), dev->getState(), desired_percentage);
-  blinds->moveTo(desired_percentage);
+  client.loop();
 }
 
-void calibrateCallback(EspalexaDevice *dev)
+// Callback function
+void callback(char *topic, byte *payload, unsigned int length)
 {
-  if (dev == nullptr)
-    return;
-  uint8_t calibrate_percentage = dev->getPercent();
-  Serial.printf("[MAIN] Calibrate %s value: %d%%\n", blinds_device->getName().c_str(), calibrate_percentage);
-  blinds->calibrate(calibrate_percentage);
-  blinds_device->setPercent(calibrate_percentage);
+  Serial.printf("t: %s, p: %s, l: %d \n", topic, payload, length);
+  if (strcmp(topic, CMD_TOPIC) == 0)
+  {
+    int desired_percentage = decodeMsg(payload, length);
+    Serial.printf("[MAIN] Device: %s, value: %d%%\n", topic, desired_percentage);
+    blinds->moveTo(desired_percentage);
+
+    pubMsg(STATE_TOPIC, desired_percentage);
+  }
 }
