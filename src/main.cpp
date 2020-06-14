@@ -11,8 +11,8 @@
 
 static const int SERVO_PIN = 14; //D5 GPIO14
 static const char *DEVICE_NAME = "blinds 1";
-static const char *CMD_TOPIC = "bedroom/blinds/1";
-static const char *STATE_TOPIC = "bedroom/blinds/1/state";
+static const char *CMD_TOPIC = "bedroom/blinds/1/set";
+static const char *STATE_TOPIC = "bedroom/blinds/1/position";
 
 Blinds *blinds;
 

@@ -1,0 +1,31 @@
+cover:
+  - platform: mqtt
+    name: "Blinds"
+    state_topic: "bedroom/blinds/1/state"
+    position_topic: "bedroom/blinds/1/position"
+    set_position_topic: "bedroom/blinds/1/set"
+    qos: 0
+    retain: true
+    payload_open: "OPEN"
+    payload_close: "CLOSE"
+    payload_stop: "STOP"
+    position_open: 100
+    position_closed: 0
+
+homeassistant:
+  customize:
+    cover.blinds1:
+      device_class: blinds
+      friendly_name: Blinds 1
+
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
