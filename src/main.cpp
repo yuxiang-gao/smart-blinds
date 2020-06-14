@@ -2,24 +2,22 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 
+#include <DNSServer.h>
+#include <WiFiManager.h>
+
 #include <Espalexa.h>
 
 #include "blinds.h"
 
-#define ServoPin 14 //D5 is GPIO14
+static const int SERVO_PIN = 14; //D5 GPIO14
+static const char *DEVICE_NAME = "blinds 1";
 
-#define WIFI_SSID "Ruison"
-#define WIFI_PASS "ilovejordan1314"
+Blinds *blinds;
 
-Blinds blind;
 Espalexa espalexa;
-EspalexaDevice *alexa_device;
+EspalexaDevice *blinds_device;
 
-const char *device = "blind 1";
-int desired_percentage = 0;
-bool blind_changed = false;
-
-void wifiSetup();
+bool first_on = true;
 
 void blindCallback(EspalexaDevice *dev);
 void calibrateCallback(EspalexaDevice *dev);
@@ -27,17 +25,21 @@ void calibrateCallback(EspalexaDevice *dev);
 void setup()
 {
   Serial.begin(9600);
-  Serial.println();
 
-  blind = Blinds(device, ServoPin);
-  desired_percentage = -1; // -1 when no input from alexa
+  blinds = new Blinds(DEVICE_NAME, SERVO_PIN, 0, 60);
 
-  // Wifi
-  wifiSetup();
+  // wifiManage
+  WiFiManager wifiManager;
+  wifiManager.autoConnect();
 
-  espalexa.addDevice(device, blindCallback, EspalexaDeviceType::dimmable, 0);
-  espalexa.addDevice("calibrate", calibrateCallback, EspalexaDeviceType::dimmable, 0);
+  // Connected!
+  Serial.printf("[WIFI] Connected. SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 
+  blinds_device = new EspalexaDevice(DEVICE_NAME, blindCallback, EspalexaDeviceType::dimmable);
+  espalexa.addDevice(blinds_device);
+  blinds_device->setState(true);
+  blinds_device->setPercent(0);
+  espalexa.addDevice("calibrate", calibrateCallback, EspalexaDeviceType::dimmable);
   espalexa.begin();
 }
 
@@ -45,40 +47,6 @@ void loop()
 {
   espalexa.loop();
   delay(1);
-  if (Serial.available() > 0)
-  {
-    String input = Serial.readString();
-    input.trim();
-    if (input == "c")
-      blind.calibrate(0);
-    else
-    {
-      int state = input.toInt();
-      blind.moveTo(state);
-    }
-  }
-}
-
-void wifiSetup()
-{
-
-  // Set WIFI module to STA mode
-  WiFi.mode(WIFI_STA);
-
-  // Connect
-  Serial.printf("[WIFI] Connecting to %s ", WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-
-  // Wait
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    delay(100);
-  }
-  Serial.println();
-
-  // Connected!
-  Serial.printf("[WIFI] STATION Mode, SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 }
 
 void blindCallback(EspalexaDevice *dev)
@@ -86,17 +54,23 @@ void blindCallback(EspalexaDevice *dev)
   if (dev == nullptr)
     return;
   int desired_percentage = dev->getPercent();
-  Serial.printf("[MAIN] Device %s  value: %d%%\n", dev->getName().c_str(), desired_percentage);
-  blind.moveTo(desired_percentage);
+  if (first_on && (uint8_t)dev->getLastChangedProperty() == 1) // The first time to switch on in the alexa app, a value of 100 will be passed.
+  {
+    Serial.println("Switch on.");
+    first_on = false;
+    return;
+  }
+  first_on = false;
+  Serial.printf("[MAIN] Device %s state: %d, value: %d%%\n", dev->getName().c_str(), dev->getState(), desired_percentage);
+  blinds->moveTo(desired_percentage);
 }
 
 void calibrateCallback(EspalexaDevice *dev)
 {
   if (dev == nullptr)
     return;
-  int calibrate_percentage = dev->getPercent();
-  EspalexaDevice *d = espalexa.getDevice(0);
-  Serial.printf("[MAIN] Calibrate %s  value: %d%%\n", d->getName().c_str(), calibrate_percentage);
-  blind.calibrate(calibrate_percentage);
-  d->setPercent(calibrate_percentage);
+  uint8_t calibrate_percentage = dev->getPercent();
+  Serial.printf("[MAIN] Calibrate %s  value: %d%%\n", blinds_device->getName().c_str(), calibrate_percentage);
+  blinds->calibrate(calibrate_percentage);
+  blinds_device->setPercent(calibrate_percentage);
 }

@@ -3,14 +3,15 @@
 
 Blinds::Blinds() {}
 
-Blinds::Blinds(String name, int servo_pin)
+Blinds::Blinds(String name, uint8_t servo_pin, uint8_t initial_state, uint8_t step_time)
 {
   this->name = name;
   this->servo.attach(servo_pin);
+  this->servo.write(90);
   Serial.println("");
-  Serial.print("Attach to servo on pin");
-  Serial.println(servo_pin);
-  this->state = 0;
+  Serial.printf("[%s] Attach to servo on pin%d\n", this->name.c_str(), servo_pin);
+  this->state = initial_state;
+  this->step_time = step_time;
 }
 
 Blinds::~Blinds()
@@ -18,16 +19,21 @@ Blinds::~Blinds()
   this->servo.detach();
 }
 
-void Blinds::calibrate(int percentage)
+int Blinds::getState()
 {
-  Serial.printf("[blindS] Calibrate to %d%%\n", percentage);
+  return this->state;
+}
+
+void Blinds::calibrate(uint8_t percentage)
+{
+  Serial.printf("[%s] Calibrate to %d%%\n", this->name.c_str(), percentage);
   this->state = percentage;
 }
 
-void Blinds::moveTo(int percentage)
+void Blinds::moveTo(uint8_t percentage)
 {
   percentage = constrain(percentage, 0, 100);
-  Serial.printf("[blindS] %s moving from %d%% to %d%%\n", this->name.c_str(), this->state, percentage);
+  Serial.printf("[%s] Moving from %d%% to %d%%\n", this->name.c_str(), this->state, percentage);
 
   int motion = percentage - this->state;
   if (motion > 0) // down
@@ -37,12 +43,6 @@ void Blinds::moveTo(int percentage)
   else if (motion < 0) // up
   {
     this->servo.write(0);
-  }
-  else
-  {
-    Serial.print("Already at ");
-    Serial.println(percentage);
-    return;
   }
   Serial.println(abs(motion) * this->step_time);
   delay(abs(motion) * this->step_time);

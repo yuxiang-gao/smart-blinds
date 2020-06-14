@@ -6,17 +6,17 @@
 class Blinds
 {
 private:
-  static const int step_time = 70;
-  //    int state_list[5] = {-2, -1, 0, 1, 2};
+  uint8_t step_time; // time to move 1%
   String name;
   Servo servo;
+  uint8_t state; // percentage
 
 public:
-  int state;
   Blinds();
-  Blinds(String name, int servo_pin);
+  Blinds(String name, uint8_t servo_pin, uint8_t initial_state = 0, uint8_t step_time = 60);
   ~Blinds();
-  void moveTo(int desired_state);
-  void calibrate(int percentage);
+  int getState();
+  void moveTo(uint8_t desired_state);
+  void calibrate(uint8_t state);
 };
 #endif
