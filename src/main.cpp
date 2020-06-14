@@ -30,7 +30,7 @@ void setup()
 
   // wifiManage
   WiFiManager wifiManager;
-  wifiManager.autoConnect();
+  wifiManager.autoConnect("SmartBlindsAP", "12345678");
 
   // Connected!
   Serial.printf("[WIFI] Connected. SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
@@ -61,7 +61,7 @@ void blindCallback(EspalexaDevice *dev)
     return;
   }
   first_on = false;
-  Serial.printf("[MAIN] Device %s state: %d, value: %d%%\n", dev->getName().c_str(), dev->getState(), desired_percentage);
+  Serial.printf("[MAIN] Device: %s, state: %d, value: %d%%\n", dev->getName().c_str(), dev->getState(), desired_percentage);
   blinds->moveTo(desired_percentage);
 }
 
@@ -70,7 +70,7 @@ void calibrateCallback(EspalexaDevice *dev)
   if (dev == nullptr)
     return;
   uint8_t calibrate_percentage = dev->getPercent();
-  Serial.printf("[MAIN] Calibrate %s  value: %d%%\n", blinds_device->getName().c_str(), calibrate_percentage);
+  Serial.printf("[MAIN] Calibrate %s value: %d%%\n", blinds_device->getName().c_str(), calibrate_percentage);
   blinds->calibrate(calibrate_percentage);
   blinds_device->setPercent(calibrate_percentage);
 }
